@@ -119,7 +119,7 @@ A：脚本完成后会显示失败列表，建议：1）检查格式 2）手动�
 
 ## 📜 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](License) file for details.
 
 ```text
 MIT License

@@ -13,6 +13,8 @@
 // @grant        GM_setClipboard
 // @grant        GM_notification
 // @require      https://cdn.jsdelivr.net/npm/sweetalert2@11
+// @updateURL    https://greasyfork.org/scripts/540841/code/SteamPY%20%E6%89%B9%E9%87%8F%E4%B8%8A%E6%9E%B6%E6%BF%80%E6%B4%BB%E7%A0%81%E5%8A%A9%E6%89%8B%20(%E6%AD%A3%E5%BC%8F%E7%89%88).meta.js
+// @downloadURL  https://greasyfork.org/scripts/540841/code/SteamPY%20%E6%89%B9%E9%87%8F%E4%B8%8A%E6%9E%B6%E6%BF%80%E6%B4%BB%E7%A0%81%E5%8A%A9%E6%89%8B%20(%E6%AD%A3%E5%BC%8F%E7%89%88).user.js
 // ==/UserScript==
 
 (function() {

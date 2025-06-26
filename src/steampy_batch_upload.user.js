@@ -3,7 +3,7 @@
 // @copyright    2025, Yuxiang ZHANG (https://github.com/jamespaulzhang)
 // @license      MIT
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  自动化批量上架Steam激活码到SteamPY平台，支持精确元素定位和错误恢复
 // @author       Yuxiang ZHANG
 // @match        https://steampy.com/pyUserInfo/sellerCDKey*
@@ -13,8 +13,8 @@
 // @grant        GM_setClipboard
 // @grant        GM_notification
 // @require      https://cdn.jsdelivr.net/npm/sweetalert2@11
-// @updateURL    https://greasyfork.org/scripts/540841/code/SteamPY%20%E6%89%B9%E9%87%8F%E4%B8%8A%E6%9E%B6%E6%BF%80%E6%B4%BB%E7%A0%81%E5%8A%A9%E6%89%8B%20(%E6%AD%A3%E5%BC%8F%E7%89%88).meta.js
-// @downloadURL  https://greasyfork.org/scripts/540841/code/SteamPY%20%E6%89%B9%E9%87%8F%E4%B8%8A%E6%9E%B6%E6%BF%80%E6%B4%BB%E7%A0%81%E5%8A%A9%E6%89%8B%20(%E6%AD%A3%E5%BC%8F%E7%89%88).user.js
+// @downloadURL https://update.greasyfork.org/scripts/540841/SteamPY%20%E6%89%B9%E9%87%8F%E4%B8%8A%E6%9E%B6%E6%BF%80%E6%B4%BB%E7%A0%81%E5%8A%A9%E6%89%8B%20%28%E6%AD%A3%E5%BC%8F%E7%89%88%29.user.js
+// @updateURL https://update.greasyfork.org/scripts/540841/SteamPY%20%E6%89%B9%E9%87%8F%E4%B8%8A%E6%9E%B6%E6%BF%80%E6%B4%BB%E7%A0%81%E5%8A%A9%E6%89%8B%20%28%E6%AD%A3%E5%BC%8F%E7%89%88%29.meta.js
 // ==/UserScript==
 
 (function() {
@@ -30,9 +30,115 @@
         retryTimes: 3
     };
 
+    // 添加自定义样式
+    function addCustomStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+        .centered-swal .swal2-popup {
+            width: 300px !important;
+            max-height: 220px !important;
+            padding: 15px !important;
+            font-size: 13px !important;
+        }
+        .centered-swal .swal2-title {
+            font-size: 16px !important;
+            margin: 0 0 8px 0 !important;
+            padding-right: 20px;
+        }
+        .centered-swal .swal2-html-container {
+            margin: 0 0 12px 0 !important;
+            max-height: 100px !important;
+            overflow-y: auto !important;
+            font-size: 13px !important;
+        }
+        .centered-swal .swal2-actions {
+            margin-top: 8px !important;
+            padding: 0 !important;
+        }
+        .centered-swal .swal2-styled {
+            margin: 4px !important;
+            padding: 5px 10px !important;
+            font-size: 13px !important;
+        }
+        .centered-swal .swal2-icon {
+            width: 36px !important;
+            height: 36px !important;
+            margin: 5px auto 8px !important;
+        }
+        .centered-swal .swal2-icon .swal2-icon-content {
+            font-size: 24px !important;
+            line-height: 36px !important;
+        }
+        .centered-swal .swal2-success-circular-line-left,
+        .centered-swal .swal2-success-circular-line-right,
+        .centered-swal .swal2-success-fix {
+            display: none !important;
+        }
+        .centered-swal .swal2-success .swal2-success-ring {
+            width: 36px !important;
+            height: 36px !important;
+            border-width: 2px !important;
+        }
+        .centered-swal .swal2-success [class^="swal2-success-line"] {
+            height: 3px !important;
+            background-color: #a5dc86 !important;
+        }
+        .centered-swal .swal2-success .swal2-success-line-tip {
+            width: 12px !important;
+            left: 6px !important;
+            top: 21px !important;
+        }
+        .centered-swal .swal2-success .swal2-success-line-long {
+            width: 20px !important;
+            right: 6px !important;
+            top: 17px !important;
+        }
+        .centered-swal .swal2-error .swal2-x-mark {
+            position: relative;
+            width: 36px;
+            height: 36px;
+        }
+        .centered-swal .swal2-error [class^="swal2-x-mark-line"] {
+            height: 3px !important;
+            background-color: #f27474 !important;
+        }
+        .centered-swal .swal2-error .swal2-x-mark-line-left {
+            width: 24px !important;
+            top: 17px !important;
+            left: 6px !important;
+            transform: rotate(45deg) !important;
+        }
+        .centered-swal .swal2-error .swal2-x-mark-line-right {
+            width: 24px !important;
+            top: 17px !important;
+            right: 6px !important;
+            transform: rotate(-45deg) !important;
+        }
+        .centered-swal .swal2-warning .swal2-icon-content {
+            font-size: 24px !important;
+            line-height: 36px !important;
+        }
+        .centered-swal .swal2-close {
+            top: 10px !important;
+            right: 10px !important;
+            font-size: 20px !important;
+            width: 24px !important;
+            height: 24px !important;
+        }
+        .compact-notification .swal2-popup {
+            max-height: 280px !important;
+        }
+        .compact-notification .swal2-html-container {
+            max-height: 180px !important;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
     // 主初始化函数
     async function init() {
         try {
+            addCustomStyles(); // 添加自定义样式
             await waitForVueApp();
             createUI();
         } catch (err) {
@@ -1027,11 +1133,16 @@
         // 确认对话框
         const confirmation = await Swal.fire({
             title: '确认批量上架?',
-            html: `将上架 <b>${items.length}</b> 个激活码<br>
-                 默认价格: <b>${ui.defaultPrice.value}</b> 元<br>
-                 每批处理: <b>${ui.batchSize.value}</b> 个`,
+            html: `<div style="font-size: 14px;">
+               将上架 <b>${items.length}</b> 个激活码<br>
+               默认价格: <b>${ui.defaultPrice.value}</b> 元<br>
+               每批处理: <b>${ui.batchSize.value}</b> 个
+             </div>`,
             icon: 'question',
-            showCancelButton: true
+            showCancelButton: true,
+            customClass: {
+                popup: 'centered-swal'
+            }
         });
         if (!confirmation.isConfirmed) return;
 
@@ -1056,7 +1167,7 @@
                 url: url,
                 key: key || '',
                 price: price ? parseFloat(price) : defaultPrice,
-                region: region || config.defaultRegion // 添加区域字段
+                region: region || config.defaultRegion
             };
         })
             .filter(item => item.url && item.key);
@@ -1103,29 +1214,48 @@
 
     // 显示完成通知
     function showCompletion(success, failed, failedItems) {
-        let html = `批量上架完成!<br>成功: <b>${success}</b>, 失败: <b>${failed}</b>`;
+        let html = `<div style="font-size: 14px;">批量上架完成!<br>成功: <b>${success}</b>, 失败: <b>${failed}</b></div>`;
 
         if (failed > 0) {
-            html += `<br><br>失败项:<br>`;
+            html += `<div style="margin-top: 10px; max-height: 120px; overflow-y: auto;">`;
+            html += `<b>失败项:</b><br>`;
             html += failedItems.slice(0, 5).map(item =>
-                                                `• ${item.url.substring(0, 50)}...`).join('<br>');
+                                                `• ${item.url.substring(0, 40)}...`).join('<br>');
             if (failedItems.length > 5) html += `<br>...及其他 ${failedItems.length - 5} 项`;
+            html += `</div>`;
         }
 
         Swal.fire({
             title: '完成',
             html: html,
             icon: failed ? 'warning' : 'success',
-            width: '600px'
+            customClass: {
+                popup: 'centered-swal compact-notification'
+            }
         });
     }
 
     // 工具函数：显示通知
     function showSuccess(text) {
-        Swal.fire({ text, icon: 'success', timer: 1500 });
+        Swal.fire({
+            text,
+            icon: 'success',
+            timer: 1500,
+            customClass: {
+                popup: 'centered-swal'
+            }
+        });
     }
+
     function showError(title, text) {
-        Swal.fire({ title, text, icon: 'error' });
+        Swal.fire({
+            title,
+            text,
+            icon: 'error',
+            customClass: {
+                popup: 'centered-swal'
+            }
+        });
     }
 
     // 启动脚本
@@ -1135,3 +1265,4 @@
         window.addEventListener('load', init);
     }
 })();
+

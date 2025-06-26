@@ -39,11 +39,11 @@ https://store.steampowered.com/app/730/CSGO/|ABCDE-FGHIJ-KLMNO|50
 
 ### 安装步骤
 1. 安装 [Tampermonkey](https://www.tampermonkey.net/) 扩展（v4.19+）
-2. [点击安装脚本](https://github.com/jamespaulzhang/SteamKeyBulkManager/raw/main/src/steamkey-bulk-manager.user.js)
+2. [点击安装脚本](https://greasyfork.org/zh-CN/scripts/540841-steampy-%E6%89%B9%E9%87%8F%E4%B8%8A%E6%9E%B6%E6%BF%80%E6%B4%BB%E7%A0%81%E5%8A%A9%E6%89%8B-%E6%AD%A3%E5%BC%8F%E7%89%88)
 3. 访问 [SteamPY CDKey 管理页面](https://steampy.com/pyUserInfo/sellerCDKey)
 
 ### 操作界面
-![浮动控制面板](/docs/screenshot.png)
+![浮动控制面板](https://github.com/jamespaulzhang/SteamKeyBulkManager/blob/main/docs/screenshot.png)
 - 可拖动/最小化悬浮窗
 - 实时状态监控
 - 批量进度显示（成功/失败计数）

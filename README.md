@@ -122,7 +122,7 @@ A：目前的1.0版本暂时不支持，未来会考虑更新
 
 ## 📜 License
 
-This project is licensed under the MIT License - see the [License](License) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ```text
 MIT License

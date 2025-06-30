@@ -6,6 +6,7 @@
 // @version      1.1
 // @description  自动化批量上架Steam激活码到SteamPY平台，支持精确元素定位和错误恢复
 // @author       Yuxiang ZHANG
+// @icon         https://steampy.com/img/logo.63413a4f.png
 // @match        https://steampy.com/pyUserInfo/sellerCDKey*
 // @match        https://steampy.com/pyUserInfo/sellerCDKey/*
 // @grant        GM_setValue

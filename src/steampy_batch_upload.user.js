@@ -3,8 +3,8 @@
 // @copyright    2026, Yuxiang ZHANG (https://github.com/jamespaulzhang)
 // @license      MIT
 // @namespace    http://tampermonkey.net/
-// @version      1.2
-// @description  自动化批量上架Steam激活码到SteamPY平台，精确元素定位，自动获取最低挂单价格并弹窗确认（显示参考价），支持失败重试、键盘快捷键，同一游戏多个KEY逗号分隔
+// @version      1.2.1
+// @description  自动化批量上架Steam激活码到SteamPY平台，精确元素定位，自动获取最低挂单价格并弹窗确认，支持失败重试、键盘快捷键，智能跳过未收录游戏，同一游戏多个KEY逗号分隔
 // @author       Yuxiang ZHANG
 // @icon         https://steampy.com/img/logo.63413a4f.png
 // @match        https://steampy.com/pyUserInfo/sellerCDKey*
@@ -40,7 +40,6 @@
     let isPaused = false;
     let shouldCancel = false;
     let cancelRequested = false;
-    // 保存最近一次处理失败的项目，方便重试
     let lastFailedItems = [];
 
     function addCustomStyles() {
@@ -220,7 +219,6 @@
         .bsp-mini-float:hover { transform: scale(1.1); }
         .bsp-mini-float span { color: white; font-weight: bold; font-size: 18px; }
 
-        /* SweetAlert2 层级提升 */
         .centered-swal-container {
             z-index: 100000 !important;
         }
@@ -326,6 +324,7 @@
                 <li>同一游戏多个KEY用<strong>英文逗号</strong>分隔</li>
                 <li>不输入价格会自动获取最低挂单价-0.01</li>
                 <li>弹窗时按<strong>Enter</strong>确认，<strong>Esc</strong>跳过</li>
+                <li>遇到“未收录游戏”会自动跳过</li>
             </ul>
         `;
         content.appendChild(warning);
@@ -396,7 +395,6 @@
         startBtn.style.marginBottom = '8px';
         content.appendChild(startBtn);
 
-        // 失败重试按钮
         const retryBtn = document.createElement('button');
         retryBtn.className = 'bsp-btn bsp-btn-warning';
         retryBtn.id = 'retryBtn';
@@ -513,6 +511,53 @@
         return false;
     }
 
+    // 等待未收录错误消息出现（使用MutationObserver更快捕获）
+    function waitForUnlistedError(timeout = 5000) {
+        return new Promise((resolve) => {
+            const selector = '.ivu-message-notice-content-error span';
+            // 先检查当前是否已有
+            const existing = document.querySelectorAll(selector);
+            for (const el of existing) {
+                if (el.textContent.includes('未收录该游戏')) {
+                    resolve(true);
+                    return;
+                }
+            }
+            let observer;
+            const timeoutId = setTimeout(() => {
+                if (observer) observer.disconnect();
+                resolve(false);
+            }, timeout);
+
+            observer = new MutationObserver((mutations) => {
+                for (const mutation of mutations) {
+                    for (const node of mutation.addedNodes) {
+                        if (node.nodeType === 1) {
+                            if (node.matches && node.matches(selector) && node.textContent.includes('未收录该游戏')) {
+                                clearTimeout(timeoutId);
+                                observer.disconnect();
+                                resolve(true);
+                                return;
+                            }
+                            if (node.querySelectorAll) {
+                                const errors = node.querySelectorAll(selector);
+                                for (const err of errors) {
+                                    if (err.textContent.includes('未收录该游戏')) {
+                                        clearTimeout(timeoutId);
+                                        observer.disconnect();
+                                        resolve(true);
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+        });
+    }
+
     async function processItem(item, isGlobal, attempt = 1) {
         let visibleModal = null;
         try {
@@ -528,7 +573,20 @@
             const searchBtn = await waitForElementWithin(visibleModal, 'button.addCDKBtn:not([disabled])');
             await safeClick(searchBtn);
 
-            await processSearchResults(visibleModal, item);
+            // 并行等待：游戏卡片 或 未收录错误
+            const cardPromise = waitForElementWithin(visibleModal, 'div.flex-row.mt-5.c-point', null, 15000).catch(() => null);
+            const errorPromise = waitForUnlistedError(5000);
+            const result = await Promise.race([cardPromise, errorPromise]);
+
+            if (result === true) { // 错误先发生
+                throw new UnlistedGameError('游戏未收录');
+            } else if (!result) { // 卡片没出现，也没有错误（可能超时）
+                throw new Error('无法找到游戏卡片');
+            }
+
+            // 卡片存在，正常处理
+            const gameCard = result;
+            await processSearchResults(gameCard, item);
             await new Promise(resolve => setTimeout(resolve, 1000));
 
             const { finalPrice } = await fillForm(visibleModal, item, isGlobal);
@@ -550,7 +608,7 @@
             console.groupEnd();
             console.error(`处理失败: ${err.message}`);
             if (visibleModal) await closeModal(visibleModal);
-            if (err instanceof UnlistedGameError || err.message.includes('未收录该游戏')) throw new UnlistedGameError('游戏未收录');
+            if (err instanceof UnlistedGameError) throw err;
             if (err.message.includes('用户跳过价格确认')) throw err;
             if (attempt >= config.retryTimes) throw new Error(`处理失败: ${err.message}`);
             await new Promise(resolve => setTimeout(resolve, config.delayBetweenItems));
@@ -558,13 +616,7 @@
         }
     }
 
-    async function processSearchResults(visibleModal, item) {
-        const gameCard = await waitForElementWithin(visibleModal, 'div.flex-row.mt-5.c-point', null, 20000);
-        if (!gameCard) throw new Error('无法找到游戏卡片');
-
-        const errorMsg = await checkForUnlistedGameError(visibleModal);
-        if (errorMsg) throw new UnlistedGameError('游戏未收录');
-
+    async function processSearchResults(gameCard, item) {
         gameCard.style.outline = '3px solid blue';
         await simulateClick(gameCard);
         await waitForElement('button.ivu-btn-error.ivu-btn-long', null, 15000);
@@ -582,27 +634,6 @@
         if (item.isBundle && !/bundle|pack|合集|捆绑包/i.test(gameCard.textContent)) throw new Error('合集链接未匹配到合集包');
     }
 
-    function checkForUnlistedGameError(modal) {
-        return new Promise((resolve) => {
-            const check = () => {
-                const allErrors = [
-                    ...modal.querySelectorAll('.ivu-message-notice-content-error span, .ivu-message-error span'),
-                    ...document.querySelectorAll('.ivu-message-notice-content-error span, .ivu-message-error span')
-                ];
-                for (const el of allErrors) {
-                    if (el.textContent.includes('未收录该游戏')) {
-                        resolve('游戏未收录');
-                        return;
-                    }
-                }
-                setTimeout(check, 100);
-            };
-            setTimeout(() => resolve(null), 2000);
-            check();
-        });
-    }
-
-    // 返回一个对象，包含获取到的各个价格，供弹窗参考
     function getPriceInfo() {
         const info = { recentDeal: null, lowestListing: null };
         try {
@@ -622,7 +653,6 @@
         return info;
     }
 
-    // 计算自动价格，与之前一致
     async function getAutoPrice() {
         try {
             const info = getPriceInfo();
@@ -682,7 +712,6 @@
         }
     }
 
-    // 增强版确认弹窗，显示价格参考，并支持键盘快捷键
     async function awaitUserPriceConfirmation(item, currentPrice) {
         const gameName = item.name || '未知游戏';
         const keyCount = item.keys.length;
@@ -729,14 +758,12 @@
                 if (popup) popup.style.zIndex = '100000';
                 if (backdrop) backdrop.style.zIndex = '100000';
 
-                // 自动聚焦输入框，便于编辑
                 const input = document.getElementById('swal-price-input');
                 if (input) {
                     input.focus();
                     input.select();
                 }
 
-                // 键盘监听：Enter 确认，Esc 取消
                 const keyHandler = (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
@@ -747,7 +774,6 @@
                     }
                 };
                 window.addEventListener('keydown', keyHandler, { once: false });
-                // 关闭时移除监听
                 const cleanup = () => {
                     window.removeEventListener('keydown', keyHandler);
                 };
@@ -945,7 +971,7 @@
 
         const conf = await Swal.fire({
             title: '确认批量上架?',
-            html: `<div>将上架 <b>${items.length}</b> 个游戏<br>每批处理: <b>${ui.batchSize.value}</b> 个<br><span style="color:#e6960f;">每个游戏需确认价格（Enter确认 / Esc跳过）</span></div>`,
+            html: `<div>将上架 <b>${items.length}</b> 个游戏<br>每批处理: <b>${ui.batchSize.value}</b> 个<br><span style="color:#e6960f;">每个游戏需确认价格（Enter确认 / Esc跳过）<br>未收录游戏将自动跳过</span></div>`,
             icon: 'question',
             showCancelButton: true,
             customClass: {
@@ -976,7 +1002,6 @@
         runBatchProcessing(items, settings, ui);
     }
 
-    // 重试上一次失败的项目
     function retryFailedItems() {
         if (isProcessing) return;
         if (!lastFailedItems || lastFailedItems.length === 0) {
@@ -984,7 +1009,6 @@
             return;
         }
         const input = document.getElementById('batchDataInput');
-        // 重新生成文本并填入
         const lines = lastFailedItems.map(item => {
             const priceStr = item.autoPrice ? '' : `|${item.price}`;
             return `${item.url}|${item.keys.join(',')}${priceStr}`;
@@ -1079,7 +1103,7 @@
             isProcessing = false;
             shouldCancel = false;
             cancelRequested = false;
-            lastFailedItems = failedItems; // 保存失败项
+            lastFailedItems = failedItems;
             ui.startBtn.disabled = false;
             ui.startBtn.style.opacity = '1';
             ui.pauseBtn.style.display = 'none';
@@ -1088,7 +1112,6 @@
             ui.pauseBtn.className = 'bsp-btn bsp-btn-warning';
             ui.cancelBtn.disabled = false;
 
-            // 显示重试按钮（如果有失败项）
             if (failedItems.length > 0) {
                 ui.retryBtn.style.display = 'block';
                 ui.retryBtn.textContent = `重试失败项 (${failedItems.length})`;

@@ -3,7 +3,7 @@
 // @copyright    2026, Yuxiang ZHANG (https://github.com/jamespaulzhang)
 // @license      MIT
 // @namespace    http://tampermonkey.net/
-// @version      1.2.1
+// @version      1.3
 // @description  自动化批量上架Steam激活码到SteamPY平台，精确元素定位，自动获取最低挂单价格并弹窗确认，支持失败重试、键盘快捷键，智能跳过未收录游戏，同一游戏多个KEY逗号分隔
 // @author       Yuxiang ZHANG
 // @icon         https://steampy.com/img/logo.63413a4f.png
